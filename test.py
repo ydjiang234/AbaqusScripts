@@ -73,7 +73,24 @@ def addAxis(part, axis):
         Axis = part.DatumAxisByPrincipalAxis(principalAxis=ZAXIS)
     return Axis
 
+def addSkectchAsWire(model, part, **kwargs):
+    sketch = kwargs['sketch']
+    plane = kwargs['plane']
+    axis = kwargs['axis']
+    angle = kwargs['rotate']
+    vector = kwargs['transform']
 
+    tempSkecth = model.ConstrainedSketch(name='__profile__', sheetSize=1000.0, transform= part.MakeSketchTransform(sketchPlane=plane, sketchPlaneSide=SIDE1, sketchUpEdge=axis, sketchOrientation=RIGHT, origin=(0.0, 0.0, 0.0)))
+    part.projectReferencesOntoSketch(filter=COPLANAR_EDGES, sketch=tempSkecth)
+    tempSkecth.retrieveSketch(sketch=sketch)
+    print(tempSkecth.geometry)
+    if angle != False:
+        tempSkecth.rotate(angle=angle, centerPoint=(0.0,0.0), objectList=[value for key, value in tempSkecth.geometry.items()])
+    if vector != False:
+        tempSkecth.move(objectList=[value for key, value in tempSkecth.geometry.items()],vector=vector)
+
+    part.Wire(sketch=tempSkecth, sketchOrientation=RIGHT, sketchPlane=plane, sketchPlaneSide=SIDE1, sketchUpEdge=axis)
+    del model.sketches[tempSkecth.name]
 
 
 model = newModelStd('test')
@@ -103,18 +120,23 @@ zAxis = part.datums[3]
 yzPlane = part.datums[4]
 xzPlane = part.datums[5]
 xyPlane = part.datums[6]
-'''
-print(xyPlane)
-xyPlaneF.setValues(offset=5.0)
-part.regenerate()
-print(xyPlane)
-'''
 
-#part.Wire(sketch=sketch, sketchOrientation=RIGHT, sketchPlane=plane, sketchPlaneSide=SIDE1, sketchUpEdge=axis)
+sketchKwargs = {
+        'sketch':sketch,
+        'plane':xyPlane,
+        'axis':yAxis,
+        'rotate':45,
+        'transform':(5.0,5.0),
+        }
 
+addSkectchAsWire(model, part, **sketchKwargs)
+sketchKwargs = {
+        'sketch':sketch,
+        'plane':xyPlane,
+        'axis':yAxis,
+        'rotate':False,
+        'transform':False,
+        }
 
-tempSkecth = model.ConstrainedSketch(name='__profile__', transform= part.MakeSketchTransform(sketchPlane=xyPlane, sketchPlaneSide=SIDE1, sketchUpEdge=yAxis, sketchOrientation=RIGHT))
-part.projectReferencesOntoSketch(filter=COPLANAR_EDGES, sketch=tempSkecth)
-tempSkecth.retrieveSketch(sketch=sketch)
-part.Wire(sketch=tempSkecth, sketchOrientation=RIGHT, sketchPlane=xyPlane, sketchPlaneSide=SIDE1, sketchUpEdge=yAxis)
-del tempSkecth
+addSkectchAsWire(model, part, **sketchKwargs)
+
