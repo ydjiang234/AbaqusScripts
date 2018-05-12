@@ -83,7 +83,6 @@ def addSkectchAsWire(model, part, **kwargs):
     tempSkecth = model.ConstrainedSketch(name='__profile__', sheetSize=1000.0, transform= part.MakeSketchTransform(sketchPlane=plane, sketchPlaneSide=SIDE1, sketchUpEdge=axis, sketchOrientation=RIGHT, origin=(0.0, 0.0, 0.0)))
     part.projectReferencesOntoSketch(filter=COPLANAR_EDGES, sketch=tempSkecth)
     tempSkecth.retrieveSketch(sketch=sketch)
-    print(tempSkecth.geometry)
     if angle != False:
         tempSkecth.rotate(angle=angle, centerPoint=(0.0,0.0), objectList=[value for key, value in tempSkecth.geometry.items()])
     if vector != False:
@@ -92,12 +91,20 @@ def addSkectchAsWire(model, part, **kwargs):
     part.Wire(sketch=tempSkecth, sketchOrientation=RIGHT, sketchPlane=plane, sketchPlaneSide=SIDE1, sketchUpEdge=axis)
     del model.sketches[tempSkecth.name]
 
+def getNewaddItem(curDict, preItemList):
+    for key,item in curDict.items():
+        if item not in preItemList:
+            break
+    preItemList.append(item)
+    return item, preItemList
+
 
 model = newModelStd('test')
 newJob(model, 'test', 4)
-tempPoints = [(0.0, 0.0),
-                (1.0, 2.0),
-                (4.0,1.0),
+tempPoints = [(-1.0, -1.0),
+                (1.0, -1.0),
+                (1.0,1.0),
+                (-1.0,1.0),
                 ]
 kwargs = {
         'name':'test',
@@ -106,37 +113,20 @@ kwargs = {
 sketch = newSketch(model, **kwargs)
 
 part = addEmpty3DPart(model, 'test')
+partDatumList = []
 
-xAxisF = addAxis(part, 1)
 yAxisF = addAxis(part, 2)
-zAxisF = addAxis(part, 3)
-yzPlaneF = addYZPlane(part, 0.0)
-xzPlaneF = addXZPlane(part, 0.0)
-xyPlaneF = addXYPlane(part, 0.0)
+yAxis, partDatumList = getNewaddItem(part.datums, partDatumList)
 
-xAxis = part.datums[1]
-yAxis = part.datums[2]
-zAxis = part.datums[3]
-yzPlane = part.datums[4]
-xzPlane = part.datums[5]
-xyPlane = part.datums[6]
-
-sketchKwargs = {
+for i in range(5):
+    xyPlaneF = addXYPlane(part, i*5.0)
+    xyPlane, partDatumList = getNewaddItem(part.datums, partDatumList)
+    sketchKwargs = {
         'sketch':sketch,
         'plane':xyPlane,
         'axis':yAxis,
-        'rotate':45,
-        'transform':(5.0,5.0),
+        'rotate':i*5,
+        'transform':(i,i*2),
         }
 
-addSkectchAsWire(model, part, **sketchKwargs)
-sketchKwargs = {
-        'sketch':sketch,
-        'plane':xyPlane,
-        'axis':yAxis,
-        'rotate':False,
-        'transform':False,
-        }
-
-addSkectchAsWire(model, part, **sketchKwargs)
-
+    addSkectchAsWire(model, part, **sketchKwargs)
