@@ -11,6 +11,8 @@ from job import *
 from sketch import *
 from visualization import *
 from connectorBehavior import *
+from abaqus import *
+from abaqusConstants import *
 
 import os
 import sys
@@ -49,6 +51,31 @@ def newSketch(model, **kwargs):
 
     return sketch
 
+def addXYPlane(part, offset):
+    return part.DatumPlaneByPrincipalPlane(principalPlane=XYPLANE, offset=offset)
+
+def addXZPlane(part, offset):
+    return part.DatumPlaneByPrincipalPlane(principalPlane=XZPLANE, offset=offset)
+
+def addYZPlane(part, offset):
+    return part.DatumPlaneByPrincipalPlane(principalPlane=YZPLANE, offset=offset)
+
+def addEmpty3DPart(model, partName):
+    part = model.Part(dimensionality=THREE_D, name=partName, type=DEFORMABLE_BODY)
+    return part
+
+def addAxis(part, axis):
+    if axis == 1:
+        Axis = part.DatumAxisByPrincipalAxis(principalAxis=XAXIS)
+    elif axis == 2:
+        Axis = part.DatumAxisByPrincipalAxis(principalAxis=YAXIS)
+    elif axis == 3:
+        Axis = part.DatumAxisByPrincipalAxis(principalAxis=ZAXIS)
+    return Axis
+
+
+
+
 model = newModelStd('test')
 newJob(model, 'test', 4)
 tempPoints = [(0.0, 0.0),
@@ -59,4 +86,35 @@ kwargs = {
         'name':'test',
         'points':tempPoints        
         }
-newSketch(model, **kwargs)
+sketch = newSketch(model, **kwargs)
+
+part = addEmpty3DPart(model, 'test')
+
+xAxisF = addAxis(part, 1)
+yAxisF = addAxis(part, 2)
+zAxisF = addAxis(part, 3)
+yzPlaneF = addYZPlane(part, 0.0)
+xzPlaneF = addXZPlane(part, 0.0)
+xyPlaneF = addXYPlane(part, 0.0)
+
+xAxis = part.datums[1]
+yAxis = part.datums[2]
+zAxis = part.datums[3]
+yzPlane = part.datums[4]
+xzPlane = part.datums[5]
+xyPlane = part.datums[6]
+'''
+print(xyPlane)
+xyPlaneF.setValues(offset=5.0)
+part.regenerate()
+print(xyPlane)
+'''
+
+#part.Wire(sketch=sketch, sketchOrientation=RIGHT, sketchPlane=plane, sketchPlaneSide=SIDE1, sketchUpEdge=axis)
+
+
+tempSkecth = model.ConstrainedSketch(name='__profile__', transform= part.MakeSketchTransform(sketchPlane=xyPlane, sketchPlaneSide=SIDE1, sketchUpEdge=yAxis, sketchOrientation=RIGHT))
+part.projectReferencesOntoSketch(filter=COPLANAR_EDGES, sketch=tempSkecth)
+tempSkecth.retrieveSketch(sketch=sketch)
+part.Wire(sketch=tempSkecth, sketchOrientation=RIGHT, sketchPlane=xyPlane, sketchPlaneSide=SIDE1, sketchUpEdge=yAxis)
+del tempSkecth
