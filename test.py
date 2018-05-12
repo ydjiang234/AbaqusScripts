@@ -98,6 +98,13 @@ def getNewaddItem(curDict, preItemList):
     preItemList.append(item)
     return item, preItemList
 
+def getNewaddItemList(curDict, preItemList):
+    out = []
+    for item in curDict:
+        if item not in preItemList:
+           out.append(item)
+    preItemList.extend(out)
+    return out, preItemList
 
 model = newModelStd('test')
 newJob(model, 'test', 4)
@@ -114,6 +121,8 @@ sketch = newSketch(model, **kwargs)
 
 part = addEmpty3DPart(model, 'test')
 partDatumList = []
+partEdgeList = []
+partSectionEdgeList = []
 
 yAxisF = addAxis(part, 2)
 yAxis, partDatumList = getNewaddItem(part.datums, partDatumList)
@@ -128,5 +137,10 @@ for i in range(5):
         'rotate':i*5,
         'transform':(i,i*2),
         }
-
     addSkectchAsWire(model, part, **sketchKwargs)
+    out, partEdgeList = getNewaddItemList(part.edges, partEdgeList)
+    partSectionEdgeList.append(out)
+    print(partSectionEdgeList[0][0])
+    
+
+#part.ShellLoft(endCondition=NONE, loftsections=[partSectionEdgeList[0], partSectionEdgeList[3]], startCondition=NONE)
