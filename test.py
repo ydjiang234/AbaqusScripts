@@ -79,6 +79,7 @@ def addSkectchAsWire(model, part, **kwargs):
     axis = kwargs['axis']
     angle = kwargs['rotate']
     vector = kwargs['transform']
+    isClose = kwargs['isClose']
 
     tempSkecth = model.ConstrainedSketch(name='__profile__', sheetSize=1000.0, transform= part.MakeSketchTransform(sketchPlane=plane, sketchPlaneSide=SIDE1, sketchUpEdge=axis, sketchOrientation=RIGHT, origin=(0.0, 0.0, 0.0)))
     part.projectReferencesOntoSketch(filter=COPLANAR_EDGES, sketch=tempSkecth)
@@ -87,24 +88,45 @@ def addSkectchAsWire(model, part, **kwargs):
         tempSkecth.rotate(angle=angle, centerPoint=(0.0,0.0), objectList=[value for key, value in tempSkecth.geometry.items()])
     if vector != False:
         tempSkecth.move(objectList=[value for key, value in tempSkecth.geometry.items()],vector=vector)
-
-    part.Wire(sketch=tempSkecth, sketchOrientation=RIGHT, sketchPlane=plane, sketchPlaneSide=SIDE1, sketchUpEdge=axis)
+    
+    if isClose:
+        part.Shell(sketch=tempSkecth, sketchOrientation=RIGHT, sketchPlane=plane, sketchPlaneSide=SIDE1, sketchUpEdge=axis)
+    else:
+        part.Wire(sketch=tempSkecth, sketchOrientation=RIGHT, sketchPlane=plane, sketchPlaneSide=SIDE1, sketchUpEdge=axis)
     del model.sketches[tempSkecth.name]
 
-def getNewaddItem(curDict, preItemList):
-    for key,item in curDict.items():
-        if item not in preItemList:
-            break
-    preItemList.append(item)
+def getNewaddItem(curDict, preItemList, Type='dict'):
+    if Type == 'dict': 
+        for key,item in curDict.items():
+            if item not in preItemList:
+                break
+        preItemList.append(item)
+    elif Type == 'list':
+        for item in curDict:
+            if item not in preItemList:
+                break
+        preItemList.append(item)
     return item, preItemList
 
-def getNewaddItemList(curDict, preItemList):
+def getNewaddItemList(curDict, preItemList, Type='dict'):
     out = []
-    for item in curDict:
-        if item not in preItemList:
-           out.append(item)
-    preItemList.extend(out)
+    if Type == 'dict':
+        for key,item in curDict.items():
+            if item not in preItemList:
+               out.append(item)
+    elif Type == 'list':
+        for item in curDict:
+            if item not in preItemList:
+               out.append(item)
+        preItemList.extend(out)
     return out, preItemList
+
+def getEdgesByPointOn(pointOnList, edges):
+    out = []
+    for edge in edges:
+        if edge.pointOn in pointOnList:
+            out.append(edge)
+    return out
 
 model = newModelStd('test')
 newJob(model, 'test', 4)
@@ -121,8 +143,8 @@ sketch = newSketch(model, **kwargs)
 
 part = addEmpty3DPart(model, 'test')
 partDatumList = []
-partEdgeList = []
-partSectionEdgeList = []
+partEdgePointOnList = []
+partSectionEdgePointOnList = []
 
 yAxisF = addAxis(part, 2)
 yAxis, partDatumList = getNewaddItem(part.datums, partDatumList)
@@ -136,11 +158,29 @@ for i in range(5):
         'axis':yAxis,
         'rotate':i*5,
         'transform':(i,i*2),
+        'isClose':False,
         }
+    if i==4:
+        sketchKwargs['isClose'] = True
     addSkectchAsWire(model, part, **sketchKwargs)
-    out, partEdgeList = getNewaddItemList(part.edges, partEdgeList)
-    partSectionEdgeList.append(out)
-    print(partSectionEdgeList[0][0])
+    out, partEdgeList = getNewaddItemList([item.pointOn for item in part.edges], partEdgePointOnList, Type='list')
+    partSectionEdgePointOnList.append(out)
     
+loftsections = [getEdgesByPointOn(item, part.edges) for item in partSectionEdgePointOnList]
 
-#part.ShellLoft(endCondition=NONE, loftsections=[partSectionEdgeList[0], partSectionEdgeList[3]], startCondition=NONE)
+part.ShellLoft(endCondition=NONE, loftsections=loftsections, startCondition=NONE)
+
+
+material = model.Material(name='Material-1')
+material.Elastic(table=((200000.0, 0.3), ))
+
+
+set1 = part.Set(name = 'Set1',faces=part.faces.findAt([(0.0,1.0,0.0)]))
+
+
+layer = part.CompositeLayup(description='', elementType=SHELL, name='CompositeLayup-1', offsetType=TOP_SURFACE, symmetric=False, thicknessAssignment=FROM_SECTION)
+
+layer.Section(integrationRule=SIMPSON, poissonDefinition=DEFAULT, preIntegrate=OFF, temperature=GRADIENT, thicknessType=UNIFORM, useDensity=OFF)
+
+layer.ReferenceOrientation(additionalRotationType=ROTATION_NONE, angle=0.0, axis=AXIS_2, fieldName='', localCsys=None, orientationType=GLOBAL)
+
