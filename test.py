@@ -176,11 +176,28 @@ material.Elastic(table=((200000.0, 0.3), ))
 
 
 set1 = part.Set(name = 'Set1',faces=part.faces.findAt([(0.0,1.0,0.0)]))
+surface1 = part.Surface(name = 'Surface1',side1Faces=part.faces.findAt([(0.0,1.0,0.0)]))
 
+mLayer = part.CompositeLayup(description='', elementType=SHELL, name='CompositeLayup-1', offsetType=TOP_SURFACE, symmetric=False, thicknessAssignment=FROM_SECTION)
+mLayer.Section(integrationRule=SIMPSON, poissonDefinition=DEFAULT, preIntegrate=OFF, temperature=GRADIENT, thicknessType=UNIFORM, useDensity=OFF)
+mLayer.ReferenceOrientation(additionalRotationType=ROTATION_NONE, angle=0.0, axis=AXIS_2, fieldName='', localCsys=None, orientationType=GLOBAL)
+#mLayer.CompositePly(additionalRotationField='', additionalRotationType=ROTATION_NONE, angle=0.0, axis=AXIS_3, material='Material-1', numIntPoints=3, orientationType=SPECIFY_ORIENT, orientationValue=0.0, plyName='Ply-1', region=set1, suppressed=False, thickness=0.1, thicknessType=SPECIFY_THICKNESS)
+mLayerKwargs = {'layerNum':9}
+mLayerKwargs['name'] = ['layer-{0:.0f}'.format(i+1) for i in range(mLayerKwargs['layerNum'])]
+mLayerKwargs['set'] = [set1 for i in range(mLayerKwargs['layerNum'])]
+mLayerKwargs['intPointNum'] = [(i+1)*2+1 for i in range(mLayerKwargs['layerNum'])]
+mLayerKwargs['material'] = [material for i in range(mLayerKwargs['layerNum'])]
+mLayerKwargs['thickness'] = [(i+1)*0.1 for i in range(mLayerKwargs['layerNum'])]
+mLayerKwargs['angle'] = []
+for i in range(mLayerKwargs['layerNum']):
+    if i%3==0:
+        mLayerKwargs['angle'].append(0.0)
+    elif i%3==1:
+        mLayerKwargs['angle'].append(45.0)
+    elif i%3==2:
+        mLayerKwargs['angle'].append(-45.0)
 
-layer = part.CompositeLayup(description='', elementType=SHELL, name='CompositeLayup-1', offsetType=TOP_SURFACE, symmetric=False, thicknessAssignment=FROM_SECTION)
-
-layer.Section(integrationRule=SIMPSON, poissonDefinition=DEFAULT, preIntegrate=OFF, temperature=GRADIENT, thicknessType=UNIFORM, useDensity=OFF)
-
-layer.ReferenceOrientation(additionalRotationType=ROTATION_NONE, angle=0.0, axis=AXIS_2, fieldName='', localCsys=None, orientationType=GLOBAL)
-
+def addLayers(mLayer, **kwargs):
+    for i in range(kwargs['layerNum']):
+        mLayer.CompositePly(additionalRotationField='', additionalRotationType=ROTATION_NONE, angle=0.0, axis=AXIS_3, material=kwargs['material'][i].name, numIntPoints=kwargs['intPointNum'][i], orientationType=SPECIFY_ORIENT, orientationValue=kwargs['angle'][i], plyName=kwargs['name'][i], region=kwargs['set'][i], suppressed=False, thickness=kwargs['thickness'][i], thicknessType=SPECIFY_THICKNESS)
+addLayers(mLayer, **mLayerKwargs)
